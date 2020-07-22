@@ -7,21 +7,14 @@
         <groupId>ru.codeunited</groupId>
         <version>1.0.0</version>
     </parent>
-    <name>SberAPI :: Escrow</name>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>escrow</artifactId>
+
+    <artifactId>connectivity</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>ru.codeunited</groupId>
-            <artifactId>connectivity</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ru.codeunited</groupId>
-            <artifactId>token</artifactId>
-            <version>1.0.0</version>
-            <scope>compile</scope>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
         </dependency>
     </dependencies>
 
