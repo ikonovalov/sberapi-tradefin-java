@@ -12,6 +12,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -64,7 +65,7 @@ public class TokenClient extends PrimitiveClient {
     public String getTokenID() throws Exception {
         try (CloseableHttpResponse response = callToken()) {
             HttpEntity entity = response.getEntity();
-            String rsBody = EntityUtils.toString(entity);
+            String rsBody = EntityUtils.toString(entity, StandardCharsets.UTF_8);
             if (response.getStatusLine().getStatusCode() == 200) {
                 HashMap<String, ?> mp = new Gson().fromJson(rsBody, HashMap.class);
                 return (String) mp.get("access_token");
