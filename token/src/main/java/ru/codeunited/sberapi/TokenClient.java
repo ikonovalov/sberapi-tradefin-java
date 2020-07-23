@@ -19,18 +19,24 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import static java.util.Arrays.asList;
 
 public class TokenClient extends PrimitiveClient {
+
+    private ConcurrentMap<String, String> tokens = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, UnrecoverableKeyException {
         ApacheHttpClientCustomSSLFactory httpClientFactory = new ApacheHttpClientCustomSSLFactory(new TlsFactorySystemPropsSource());
         CloseableHttpClient httpClient = httpClientFactory.build();
         CredentialsSource credentials = new CredentialsSystemPropsSource();
 
-        try (CloseableHttpResponse response = new TokenClient(httpClient, credentials).callToken()) {
+        // Получение токена для эскроу
+        try (CloseableHttpResponse response =
+                     new TokenClient(httpClient, credentials).callToken("https://api.sberbank.ru/escrow")) {
             System.out.println(response.getStatusLine());
             for (Header h : response.getAllHeaders()) {
                 System.out.println(h.getName() + ": " + h.getValue());
@@ -46,24 +52,24 @@ public class TokenClient extends PrimitiveClient {
         super(httpClient, credentialsSource);
     }
 
-    public CloseableHttpResponse callToken() throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
+    protected CloseableHttpResponse callToken(String scope) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
         HttpUriRequest request = RequestBuilder
                 .post("https://api.sberbank.ru/ru/prod/tokens/v2/oauth")
                 .addHeader("Authorization", "Basic " + credentials.getBasicAuthenticationString())
                 .addHeader("x-ibm-client-id", credentials.getClientId())
-                .addHeader("rquid", UUID.randomUUID().toString().replaceAll("-", ""))
+                .addHeader("rquid", getNewUUID())
                 .setEntity(new UrlEncodedFormEntity(
                         asList(
                                 new BasicNameValuePair("grant_type", "client_credentials"),
-                                new BasicNameValuePair("scope", "https://api.sberbank.ru/escrow")
+                                new BasicNameValuePair("scope", scope)
                         ))
                 ).build();
 
         return httpClient.execute(request);
     }
 
-    public String getTokenID() throws Exception {
-        try (CloseableHttpResponse response = callToken()) {
+    public final String getNewTokenID(String scope) {
+        try (CloseableHttpResponse response = callToken(scope)) {
             HttpEntity entity = response.getEntity();
             String rsBody = EntityUtils.toString(entity, StandardCharsets.UTF_8);
             if (response.getStatusLine().getStatusCode() == 200) {
@@ -72,6 +78,16 @@ public class TokenClient extends PrimitiveClient {
             } else {
                 throw new RuntimeException(response.getStatusLine().toString() + "\n" + rsBody);
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+    }
+
+    public void reset() {
+        tokens.clear();
+    }
+
+    public String getTokenId(String scopeName) throws Exception {
+        return tokens.computeIfAbsent(scopeName, this::getNewTokenID);
     }
 }
