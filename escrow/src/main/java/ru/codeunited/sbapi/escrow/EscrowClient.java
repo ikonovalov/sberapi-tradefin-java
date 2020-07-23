@@ -67,12 +67,26 @@ public class EscrowClient {
     }
 
     public String getDraft(String escrowAmount,
-                            String depositorLastName,
-                            String depositorFirstName,
-                            String depositorMiddleName,
-                            String depositorRegistrationAddress,
-                            String depositorCurrentAddress,
-                            String depositorIdentificationDocumentType, String depositorIdentificationDocumentSeries, String depositorIdentificationDocumentNumber, String depositorIdentificationDocumentIssuer, String depositorIdentificationDocumentIssueDate, String depositorPhone, String depositorEmail, String beneficiaryTaxId, String beneficiaryAuthorizedRepresentativeCertificateSerial, String equityParticipationAgreementNumber, String equityParticipationAgreementDate, String estateObjectCommisioningObjectCode, String estateObjectType, String estateObjectConstructionNumber) throws Exception {
+                           String depositorLastName,
+                           String depositorFirstName,
+                           String depositorMiddleName,
+                           String depositorRegistrationAddress,
+                           String depositorCurrentAddress,
+                           String depositorIdentificationDocumentType,
+                           String depositorIdentificationDocumentSeries,
+                           String depositorIdentificationDocumentNumber,
+                           String depositorIdentificationDocumentIssuer,
+                           String depositorIdentificationDocumentIssueDate,
+                           String depositorPhone,
+                           String depositorEmail,
+                           String beneficiaryTaxId,
+                           String beneficiaryAuthorizedRepresentativeCertificateSerial,
+                           String equityParticipationAgreementNumber,
+                           String equityParticipationAgreementDate,
+                           String estateObjectCommisioningObjectCode,
+                           String estateObjectType,
+                           String estateObjectConstructionNumber) throws Exception {
+
         String tokenId = tokenClient.getTokenId(scopeName);
         String uuid = UUID.randomUUID().toString().replaceAll("-", "");
         HttpUriRequest request = RequestBuilder
@@ -105,7 +119,7 @@ public class EscrowClient {
                         ), StandardCharsets.UTF_8) // Важно корректно указывать кодировку
                 ).build();
 
-        try(CloseableHttpResponse response = httpClient.execute(request)) {
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = EntityUtils.toString(entity, StandardCharsets.UTF_8);
