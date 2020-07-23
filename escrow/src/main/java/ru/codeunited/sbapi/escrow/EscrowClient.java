@@ -79,7 +79,6 @@ public class EscrowClient {
                 .post("https://api.sberbank.ru/ru/prod/v2/escrow/individual-terms/draft")
                 .addHeader("Authorization", "Bearer " + tokenId)
                 .addHeader("x-ibm-client-id", credentials.getClientId())
-                .addHeader("rquid", uuid)
                 .addHeader("x-introspect-rquid", uuid)
                 .setEntity(new UrlEncodedFormEntity(
                         asList(
