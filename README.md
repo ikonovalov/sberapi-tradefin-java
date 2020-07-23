@@ -1,2 +1,8 @@
-# sberapi-tradefin-java
-Simple application for interacting with Sberbank via API.
+# СберAPI и торговое финансирование
+_Неофициальная документация с примерами_
+
+## Подключение (TLS и токены)
+
+## Эскроу
+
+## Аккредитивы
