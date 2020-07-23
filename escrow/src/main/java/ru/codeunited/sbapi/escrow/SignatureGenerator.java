@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public class SignatureTools {
+public class SignatureGenerator {
 
     private static CMSSignedData sign(byte[] data, PrivateKey privateKey, X509Certificate cert, X509Certificate[] other) throws Exception {
 
@@ -33,7 +33,7 @@ public class SignatureTools {
         List<X509Certificate> allCerts = new ArrayList<>();
         allCerts.add(cert);
         allCerts.addAll(Arrays.asList(other));
-        Store certs = new JcaCertStore(Arrays.asList(cert, other));
+        Store certs = new JcaCertStore(allCerts);
 
         generator.addSignerInfoGenerator(
                 new JcaSignerInfoGeneratorBuilder(
