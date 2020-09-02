@@ -4,7 +4,13 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import ru.codeunited.sberapi.*;
 import ru.sbrf.escrow.tfido.model.*;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
 
 public class EscrowShowcase {
 
@@ -43,14 +49,26 @@ public class EscrowShowcase {
         System.out.println("Очередь: " + commissioningObjectDetailsCode);
 
         // Выбор подписанта и его сертификата (ищем первого у кого доступен электронный сертификат)
-        AuthorizedRepresentativeDetails representative = residentialComplexDetails
+        Optional<AuthorizedRepresentativeDetails> firstAuthorized = residentialComplexDetails
                 .getAuthorizedRepresentative()
                 .stream()
                 .filter(rep -> rep.getBaseInfo().getCertificateSerial() != null)
-                .findFirst().get();
-
+                .findFirst();
+        if (!firstAuthorized.isPresent()) {
+            throw new IllegalStateException("No one AuthorizedRepresentativeDetails");
+        }
+        AuthorizedRepresentativeDetails representative = firstAuthorized.get();
         AuthorizedRepresentative authorizedRepresentative = representative.getBaseInfo();
         String certificateSerial = authorizedRepresentative.getCertificateSerial();
+
+        // Список счетов
+        List<EscrowAccount> accountList = escrowClient.getAccountList(0, 1000,
+                commissioningObjectDetails.getCode(),
+                LocalDate.now().minus(20, ChronoUnit.MONTHS),
+                LocalDate.now()
+        );
+
+        System.out.println("Количество счетов: " + accountList.size());
 
         // Формирование запроса для черновика
         String individualTermsXML = escrowClient.getDraft(
@@ -75,5 +93,12 @@ public class EscrowShowcase {
                 "RESIDENTIAL",
                 "26b"
         );
+
+
+        // ПОДПИСАНИЕ И СОЗДАНИЕ ИУ
+
+        // ПОЛУЧЕНИЕ ИУ по ID
+        Optional<IndividualTerms> individualTerms = escrowClient.getIndividualTerms(UUID.randomUUID());
+
     }
 }

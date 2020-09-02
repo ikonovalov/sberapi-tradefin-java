@@ -16,12 +16,18 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.time.format.DateTimeFormatter.ISO_DATE;
 import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
 
 public class EscrowClient {
 
@@ -35,6 +41,10 @@ public class EscrowClient {
 
     private final String scopeName = "https://api.sberbank.ru/escrow";
 
+    private final String baseURI = "https://api.sberbank.ru/ru/prod/v2/escrow";
+
+    private final RqUID rqUID = new RqUID();
+
     public EscrowClient(CloseableHttpClient httpClient, CredentialsSource credentials, TokenClient tokenClient) throws JAXBException {
         this.httpClient = httpClient;
         this.credentials = credentials;
@@ -42,24 +52,81 @@ public class EscrowClient {
         this.jaxbContext = JAXBContext.newInstance("ru.sbrf.escrow.tfido.model");
     }
 
+    public String baseURI() {
+        return baseURI;
+    }
+
+    protected URI uri(String... path) {
+        String p = stream(path)
+                .reduce(baseURI(), (left, right) -> left + "/" + right);
+        return URI.create(p);
+    }
+
+    /**
+     * Read http
+     * @param entity
+     * @return
+     */
+    protected String readBody(HttpEntity entity) {
+        try {
+            return EntityUtils.toString(entity, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.err.println(e.toString());
+            return "";
+        }
+    }
+
     public ResidentialComplexDetails getResidentialComplexDetails() throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
         HttpUriRequest request = RequestBuilder
-                .get("https://api.sberbank.ru/ru/prod/v2/escrow/residential-complex")
+                .get(uri("residential-complex"))
                 .addHeader("Authorization", "Bearer " + tokenId)
                 .addHeader("x-ibm-client-id", credentials.getClientId())
-                .addHeader("x-introspect-rquid", UUID.randomUUID().toString().replaceAll("-", ""))
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = EntityUtils.toString(entity, StandardCharsets.UTF_8);
+            String rsBody = readBody(entity);
 
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-                JAXBElement<ResidentialComplexDetails> rcElement = (JAXBElement<ResidentialComplexDetails>) unmarshaller.unmarshal(new StringReader(rsBody));
+                JAXBElement<ResidentialComplexDetails> rcElement =
+                        (JAXBElement<ResidentialComplexDetails>) unmarshaller.unmarshal(new StringReader(rsBody));
                 return rcElement.getValue();
+            } else {
+                throw new RuntimeException(statusLine + "\n" + rsBody);
+            }
+        }
+    }
+
+    public Optional<IndividualTerms> getIndividualTerms(UUID uuid) throws Exception {
+        URI uri = uri("individual-terms", uuid.toString());
+        return getIndividualTerms(uri);
+    }
+
+    public Optional<IndividualTerms> getIndividualTerms(URI uri) throws Exception {
+        String tokenId = tokenClient.getTokenId(scopeName);
+        HttpUriRequest request = RequestBuilder
+                .get(uri)
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = readBody(entity);
+
+            if (statusLine.getStatusCode() == 200) {
+                Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+                JAXBElement<IndividualTerms> rcElement =
+                        (JAXBElement<IndividualTerms>) unmarshaller.unmarshal(new StringReader(rsBody));
+                return Optional.of(rcElement.getValue());
+            } else if (statusLine.getStatusCode() == 404) {
+                return Optional.empty();
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
             }
@@ -88,12 +155,12 @@ public class EscrowClient {
                            String estateObjectConstructionNumber) throws Exception {
 
         String tokenId = tokenClient.getTokenId(scopeName);
-        String uuid = UUID.randomUUID().toString().replaceAll("-", "");
+
         HttpUriRequest request = RequestBuilder
-                .post("https://api.sberbank.ru/ru/prod/v2/escrow/individual-terms/draft")
+                .post(uri("individual-terms", "draft"))
                 .addHeader("Authorization", "Bearer " + tokenId)
                 .addHeader("x-ibm-client-id", credentials.getClientId())
-                .addHeader("x-introspect-rquid", uuid)
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
                 .setEntity(new UrlEncodedFormEntity(
                         asList(
                                 new BasicNameValuePair("escrowAmount", escrowAmount),
@@ -122,7 +189,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = EntityUtils.toString(entity, StandardCharsets.UTF_8);
+            String rsBody = readBody(entity);
             if (statusLine.getStatusCode() == 200) {
                 System.out.println(rsBody);
                 return rsBody;
@@ -131,4 +198,92 @@ public class EscrowClient {
             }
         }
     }
+
+    public void cancel(UUID uuid) throws Exception {
+        String tokenId = tokenClient.getTokenId(scopeName);
+        HttpUriRequest request = RequestBuilder
+                .put(uri("individual-terms", uuid.toString(), "cancel"))
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = readBody(entity);
+
+            if (statusLine.getStatusCode() != 200) {
+                throw new RuntimeException(statusLine + "\n" + rsBody);
+            }
+        }
+
+    }
+
+    public Status status(UUID uuid) throws Exception {
+        String tokenId = tokenClient.getTokenId(scopeName);
+        HttpUriRequest request = RequestBuilder
+                .get(uri("individual-terms", uuid.toString(), "status"))
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = readBody(entity);
+
+            if (statusLine.getStatusCode() == 200) {
+                Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+                JAXBElement<Status> rcElement =
+                        (JAXBElement<Status>) unmarshaller.unmarshal(new StringReader(rsBody));
+                return rcElement.getValue();
+            } else {
+                throw new RuntimeException(statusLine + "\n" + rsBody);
+            }
+        }
+    }
+
+    public List<EscrowAccount> getAccountList(
+            int offset,
+            int limit,
+            String сommisioningObjectCode,
+            LocalDate startReportDate,
+            LocalDate endReportDate ) throws Exception {
+
+        String tokenId = tokenClient.getTokenId(scopeName);
+        HttpUriRequest request = RequestBuilder
+                .post(uri("account-list"))
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("Accept", "application/xml")
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .setEntity(new UrlEncodedFormEntity(
+                        asList(
+                                new BasicNameValuePair("offset", String.valueOf(offset)),
+                                new BasicNameValuePair("limit", String.valueOf(limit)),
+                                new BasicNameValuePair("commisioningObjectCode", сommisioningObjectCode),
+                                new BasicNameValuePair("startReportDate", ISO_DATE.format(startReportDate)),
+                                new BasicNameValuePair("endReportDate", ISO_DATE.format(startReportDate))
+                        )
+                ))
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = readBody(entity);
+
+            if (statusLine.getStatusCode() == 200) {
+                Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+                EscrowAccountList root = (EscrowAccountList) unmarshaller.unmarshal(new StringReader(rsBody));
+                return root.getEscrowAccount();
+            } else {
+                throw new RuntimeException(statusLine + "\n" + rsBody);
+            }
+        }
+    }
+
+
 }
