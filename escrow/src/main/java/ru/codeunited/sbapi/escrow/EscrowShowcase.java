@@ -53,15 +53,12 @@ public class EscrowShowcase {
         log.info("Очередь: " + commissioningObjectDetailsCode);
 
         // Выбор подписанта и его сертификата (ищем первого у кого доступен электронный сертификат)
-        Optional<AuthorizedRepresentativeDetails> firstAuthorized = residentialComplexDetails
+        AuthorizedRepresentativeDetails representative = residentialComplexDetails
                 .getAuthorizedRepresentative()
                 .stream()
                 .filter(rep -> rep.getBaseInfo().getCertificateSerial() != null)
-                .findFirst();
-        if (!firstAuthorized.isPresent()) {
-            throw new IllegalStateException("No one AuthorizedRepresentativeDetails");
-        }
-        AuthorizedRepresentativeDetails representative = firstAuthorized.get();
+                .findFirst().orElseThrow(() -> new RuntimeException("Подписант не найден"));
+
         AuthorizedRepresentative authorizedRepresentative = representative.getBaseInfo();
         String certificateSerial = authorizedRepresentative.getCertificateSerial();
 
@@ -100,10 +97,30 @@ public class EscrowShowcase {
 
         // ПОДПИСАНИЕ И СОЗДАНИЕ ИУ
 
+        final UUID uuid = UUID.fromString(
+                accountList.stream().findAny().orElseThrow(() -> new RuntimeException("Accounts not found")).getIndividualTermsId()
+        );
+
         // ПОЛУЧЕНИЕ ИУ по ID
-        UUID uuid = UUID.randomUUID();
+
         Optional<IndividualTerms> individualTerms = escrowClient.getIndividualTerms(uuid);
-        String result = individualTerms.map(it -> "found").orElse("not found");
-        log.info("ИУ для {} {}", uuid, result);
+        String getResult = individualTerms.map(it -> "found").orElse("not found");
+        log.info("ИУ для {} {}", uuid, getResult);
+        individualTerms.ifPresent(it -> {
+            log.info("  Beneficiary/LegalName   {}", it.getBeneficiary().getLegalName());
+            log.info("  Depositor/Name/LastName {}", it.getDepositor().getName().getLastName());
+        });
+
+        // Получение статуса ИУ по ID
+        Optional<Status> status = escrowClient.status(uuid);
+        String statusResult = status.map(it ->  "found").orElse("not found");
+        log.info("Статус ИУ для {} {}", uuid, statusResult);
+        status.ifPresent(s -> {
+            log.info("  Status code: {}", s.getStatusCode());
+            log.info("  Processing details: {}", s.getProcessingDetails());
+        });
+
+        // Отмена ИУ по ID
+        escrowClient.cancel(UUID.randomUUID());
     }
 }

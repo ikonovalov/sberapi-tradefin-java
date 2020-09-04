@@ -198,7 +198,7 @@ public class EscrowClient {
         }
     }
 
-    public void cancel(UUID uuid) throws Exception {
+    public Boolean cancel(UUID uuid) throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
         HttpUriRequest request = RequestBuilder
                 .put(uri("individual-terms", uuid.toString(), "cancel"))
@@ -212,14 +212,19 @@ public class EscrowClient {
             HttpEntity entity = response.getEntity();
             String rsBody = readBody(entity);
 
-            if (statusLine.getStatusCode() != 200) {
+            int statusCode = statusLine.getStatusCode();
+            if (statusCode == 200) {
+                return Boolean.TRUE;
+            } else if (statusCode == 404 || statusCode == 406) {
+                return Boolean.FALSE;
+            } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
             }
         }
 
     }
 
-    public Status status(UUID uuid) throws Exception {
+    public Optional<Status> status(UUID uuid) throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
         HttpUriRequest request = RequestBuilder
                 .get(uri("individual-terms", uuid.toString(), "status"))
@@ -237,7 +242,9 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<Status> rcElement =
                         (JAXBElement<Status>) unmarshaller.unmarshal(new StringReader(rsBody));
-                return rcElement.getValue();
+                return Optional.of(rcElement.getValue());
+            } else if (statusLine.getStatusCode() == 404) {
+                return Optional.empty(); // IT not found or canceled already
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
             }
