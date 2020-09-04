@@ -191,7 +191,6 @@ public class EscrowClient {
             HttpEntity entity = response.getEntity();
             String rsBody = readBody(entity);
             if (statusLine.getStatusCode() == 200) {
-                System.out.println(rsBody);
                 return rsBody;
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
@@ -265,7 +264,7 @@ public class EscrowClient {
                                 new BasicNameValuePair("limit", String.valueOf(limit)),
                                 new BasicNameValuePair("commisioningObjectCode", сommisioningObjectCode),
                                 new BasicNameValuePair("startReportDate", ISO_DATE.format(startReportDate)),
-                                new BasicNameValuePair("endReportDate", ISO_DATE.format(startReportDate))
+                                new BasicNameValuePair("endReportDate", ISO_DATE.format(endReportDate))
                         )
                 ))
                 .build();

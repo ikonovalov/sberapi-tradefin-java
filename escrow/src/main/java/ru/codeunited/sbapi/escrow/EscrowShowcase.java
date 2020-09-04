@@ -1,20 +1,24 @@
 package ru.codeunited.sbapi.escrow;
 
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.codeunited.sberapi.*;
 import ru.sbrf.escrow.tfido.model.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 public class EscrowShowcase {
 
+    private static final Logger log = LoggerFactory.getLogger(EscrowShowcase.class);
+
     public static void main(String[] args) throws Exception {
+
+        log.info("Escrow");
 
         // Насройка подключения и прав доступа
         ApacheHttpClientCustomSSLFactory httpClientFactory = new ApacheHttpClientCustomSSLFactory(new TlsFactorySystemPropsSource());
@@ -36,7 +40,7 @@ public class EscrowShowcase {
             throw new RuntimeException("Отсутствуют жилые комплексы");
         }
         ResidentialComplex rc = rcOpt.get();
-        System.out.println("ЖК: " + rc.getResidentialComplexInfo().getName());
+        log.info("ЖК: " + rc.getResidentialComplexInfo().getName());
 
         // Выбор очереди (берем первый попавшийся)
         Optional<CommissioningObjectDetails> commissioningObjectOpt = rc.getCommissioningObject().stream().findFirst();
@@ -46,7 +50,7 @@ public class EscrowShowcase {
 
         CommissioningObjectDetails commissioningObjectDetails = commissioningObjectOpt.get();
         String commissioningObjectDetailsCode = commissioningObjectDetails.getCode();
-        System.out.println("Очередь: " + commissioningObjectDetailsCode);
+        log.info("Очередь: " + commissioningObjectDetailsCode);
 
         // Выбор подписанта и его сертификата (ищем первого у кого доступен электронный сертификат)
         Optional<AuthorizedRepresentativeDetails> firstAuthorized = residentialComplexDetails
@@ -62,13 +66,12 @@ public class EscrowShowcase {
         String certificateSerial = authorizedRepresentative.getCertificateSerial();
 
         // Список счетов
-        List<EscrowAccount> accountList = escrowClient.getAccountList(0, 1000,
-                commissioningObjectDetails.getCode(),
-                LocalDate.now().minus(20, ChronoUnit.MONTHS),
-                LocalDate.now()
-        );
+        LocalDate start = LocalDate.now().minus(60, ChronoUnit.DAYS);
+        LocalDate end = LocalDate.now().minus(30, ChronoUnit.DAYS);
+        String objectCode = commissioningObjectDetails.getCode();
+        List<EscrowAccount> accountList = escrowClient.getAccountList(0, 1000, objectCode, start, end);
 
-        System.out.println("Количество счетов: " + accountList.size());
+        log.info("Количество счетов с {} по {}: {}", start, end, accountList.size());
 
         // Формирование запроса для черновика
         String individualTermsXML = escrowClient.getDraft(
@@ -93,12 +96,14 @@ public class EscrowShowcase {
                 "RESIDENTIAL",
                 "26b"
         );
-
+        log.info("Черновик =>\n{}", individualTermsXML);
 
         // ПОДПИСАНИЕ И СОЗДАНИЕ ИУ
 
         // ПОЛУЧЕНИЕ ИУ по ID
-        Optional<IndividualTerms> individualTerms = escrowClient.getIndividualTerms(UUID.randomUUID());
-
+        UUID uuid = UUID.randomUUID();
+        Optional<IndividualTerms> individualTerms = escrowClient.getIndividualTerms(uuid);
+        String result = individualTerms.map(it -> "found").orElse("not found");
+        log.info("ИУ для {} {}", uuid, result);
     }
 }
