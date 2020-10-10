@@ -41,6 +41,7 @@ public class EasyCmsExample {
         store.load(new FileInputStream(keystoreFile), keystorePwd.toCharArray());
 
         String alias = store.aliases().nextElement();
+        System.out.println("alias=" + alias);
 
         X509Certificate certificate = (X509Certificate) store.getCertificate(alias);
         PrivateKey key = (PrivateKey) store.getKey(alias, keyPassword);

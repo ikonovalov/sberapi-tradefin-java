@@ -1,11 +1,13 @@
 package ru.codeunited.sbapi.escrow;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
@@ -25,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.lang.Integer.MIN_VALUE;
 import static java.time.format.DateTimeFormatter.ISO_DATE;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
@@ -45,11 +48,17 @@ public class EscrowClient {
 
     private final RqUID rqUID = new RqUID();
 
+    private Quote quote = new Quote("UNKNOWN", MIN_VALUE, MIN_VALUE);
+
     public EscrowClient(CloseableHttpClient httpClient, CredentialsSource credentials, TokenClient tokenClient) throws JAXBException {
         this.httpClient = httpClient;
         this.credentials = credentials;
         this.tokenClient = tokenClient;
         this.jaxbContext = JAXBContext.newInstance("ru.sbrf.escrow.tfido.model");
+    }
+
+    public Quote getQuote() {
+        return quote;
     }
 
     public String baseURI() {
@@ -80,6 +89,7 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<ResidentialComplexDetails> rcElement =
                         (JAXBElement<ResidentialComplexDetails>) unmarshaller.unmarshal(new StringReader(rsBody));
+                this.quote = extractQuota(response);
                 return rcElement.getValue();
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
@@ -110,11 +120,38 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<IndividualTerms> rcElement =
                         (JAXBElement<IndividualTerms>) unmarshaller.unmarshal(new StringReader(rsBody));
+                this.quote = extractQuota(response);
                 return Optional.of(rcElement.getValue());
             } else if (statusLine.getStatusCode() == 404) {
                 return Optional.empty();
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
+            }
+        }
+    }
+
+    public UUID createIndividualTerms(String base64CEncodedCms) throws IOException {
+        String tokenId = tokenClient.getTokenId(scopeName);
+
+        HttpUriRequest request = RequestBuilder
+                .post(uri("individual-terms"))
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .addHeader("Content-Type", "application/cms")
+                .setEntity(new StringEntity(base64CEncodedCms, StandardCharsets.UTF_8))
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = dumpBody(entity);
+            if (statusLine.getStatusCode() == 202) {
+                this.quote = extractQuota(response);
+                return null;
+            } else {
+                String headers = dumpHeaders(response);
+                throw new RuntimeException(statusLine + "\n" + headers + rsBody);
             }
         }
     }
@@ -177,6 +214,7 @@ public class EscrowClient {
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
             if (statusLine.getStatusCode() == 200) {
+                this.quote = extractQuota(response);
                 return rsBody;
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
@@ -200,11 +238,14 @@ public class EscrowClient {
 
             int statusCode = statusLine.getStatusCode();
             if (statusCode == 200) {
+                this.quote = extractQuota(response);
                 return Boolean.TRUE;
             } else if (statusCode == 404 || statusCode == 406) {
+                this.quote = extractQuota(response);
                 return Boolean.FALSE;
             } else {
-                throw new RuntimeException(statusLine + "\n" + rsBody);
+                String headers = dumpHeaders(response);
+                throw new RuntimeException(statusLine + "\n" + headers + rsBody);
             }
         }
 
@@ -228,6 +269,7 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<Status> rcElement =
                         (JAXBElement<Status>) unmarshaller.unmarshal(new StringReader(rsBody));
+                this.quote = extractQuota(response);
                 return Optional.of(rcElement.getValue());
             } else if (statusLine.getStatusCode() == 404) {
                 return Optional.empty(); // IT not found or canceled already
@@ -270,6 +312,7 @@ public class EscrowClient {
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 EscrowAccountList root = (EscrowAccountList) unmarshaller.unmarshal(new StringReader(rsBody));
+                this.quote = extractQuota(response);
                 return root.getEscrowAccount();
             } else {
                 String headers = dumpHeaders(response);
@@ -281,7 +324,7 @@ public class EscrowClient {
     public List<EscrowAccountOperation> getAccountOperationList(
             int offset,
             int limit,
-            String сommisioningObjectCode,
+            String commissioningObjectCode,
             LocalDate startReportDate,
             LocalDate endReportDate ) throws Exception {
 
@@ -296,7 +339,7 @@ public class EscrowClient {
                         asList(
                                 new BasicNameValuePair("offset", String.valueOf(offset)),
                                 new BasicNameValuePair("limit", String.valueOf(limit)),
-                                new BasicNameValuePair("commisioningObjectCode", сommisioningObjectCode),
+                                new BasicNameValuePair("commisioningObjectCode", commissioningObjectCode),
                                 new BasicNameValuePair("startReportDate", ISO_DATE.format(startReportDate)),
                                 new BasicNameValuePair("endReportDate", ISO_DATE.format(endReportDate))
                         )
@@ -311,6 +354,7 @@ public class EscrowClient {
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 EscrowAccountOperationList root = (EscrowAccountOperationList) unmarshaller.unmarshal(new StringReader(rsBody));
+                this.quote = extractQuota(response);
                 return root.getEscrowAccountOperation();
             } else {
                 String headers = dumpHeaders(response);
@@ -338,6 +382,16 @@ public class EscrowClient {
                 .map(h -> h.getName() + ": " + h.getValue())
                 .reduce((acc,val) -> acc = acc + val + "\n")
                 .orElse("");
+    }
+
+    private Quote extractQuota(CloseableHttpResponse response) {
+        Header limit = response.getHeaders("X-RateLimit-Limit")[0];
+        Header remaining = response.getHeaders("X-RateLimit-Remaining")[0];
+        String[] splited = limit.getValue().replaceAll("name=", "").split(",");
+        String tariff = splited[0];
+        Integer limitNum = Integer.valueOf(limit.getValue().split(",")[1].replaceAll(";", ""));
+        Integer remainingNum = Integer.valueOf(remaining.getValue().split(",")[1].replaceAll(";", ""));
+        return new Quote(tariff, limitNum, remainingNum);
     }
 
 
