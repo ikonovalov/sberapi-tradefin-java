@@ -29,7 +29,7 @@ public class TokenClient extends PrimitiveClient {
 
     private ConcurrentMap<String, String> tokens = new ConcurrentHashMap<>();
 
-    public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, UnrecoverableKeyException {
+    public static void main(String[] args) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
         ApacheHttpClientCustomSSLFactory httpClientFactory = new ApacheHttpClientCustomSSLFactory(new TlsFactorySystemPropsSource());
         CloseableHttpClient httpClient = httpClientFactory.build();
         CredentialsSource credentials = new CredentialsSystemPropsSource();
@@ -87,7 +87,7 @@ public class TokenClient extends PrimitiveClient {
         tokens.clear();
     }
 
-    public String getTokenId(String scopeName) throws Exception {
+    public String getTokenId(String scopeName) {
         return tokens.computeIfAbsent(scopeName, this::getNewTokenID);
     }
 }
