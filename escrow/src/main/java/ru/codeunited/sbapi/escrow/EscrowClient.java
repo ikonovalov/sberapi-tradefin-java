@@ -62,20 +62,6 @@ public class EscrowClient {
         return URI.create(p);
     }
 
-    /**
-     * Read http
-     * @param entity
-     * @return
-     */
-    protected String readBody(HttpEntity entity) {
-        try {
-            return EntityUtils.toString(entity, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            System.err.println(e.toString());
-            return "";
-        }
-    }
-
     public ResidentialComplexDetails getResidentialComplexDetails() throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
         HttpUriRequest request = RequestBuilder
@@ -88,7 +74,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
 
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
@@ -118,7 +104,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
 
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
@@ -189,7 +175,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
             if (statusLine.getStatusCode() == 200) {
                 return rsBody;
             } else {
@@ -210,7 +196,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
 
             int statusCode = statusLine.getStatusCode();
             if (statusCode == 200) {
@@ -236,7 +222,7 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
 
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
@@ -279,16 +265,79 @@ public class EscrowClient {
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
-            String rsBody = readBody(entity);
+            String rsBody = dumpBody(entity);
 
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 EscrowAccountList root = (EscrowAccountList) unmarshaller.unmarshal(new StringReader(rsBody));
                 return root.getEscrowAccount();
             } else {
-                throw new RuntimeException(statusLine + "\n" + rsBody);
+                String headers = dumpHeaders(response);
+                throw new RuntimeException(statusLine + "\n" + headers + rsBody);
             }
         }
+    }
+
+    public List<EscrowAccountOperation> getAccountOperationList(
+            int offset,
+            int limit,
+            String сommisioningObjectCode,
+            LocalDate startReportDate,
+            LocalDate endReportDate ) throws Exception {
+
+        String tokenId = tokenClient.getTokenId(scopeName);
+        HttpUriRequest request = RequestBuilder
+                .post(uri("account-oper-list"))
+                .addHeader("Authorization", "Bearer " + tokenId)
+                .addHeader("Accept", "application/xml")
+                .addHeader("x-ibm-client-id", credentials.getClientId())
+                .addHeader("x-introspect-rquid", rqUID.trimmed())
+                .setEntity(new UrlEncodedFormEntity(
+                        asList(
+                                new BasicNameValuePair("offset", String.valueOf(offset)),
+                                new BasicNameValuePair("limit", String.valueOf(limit)),
+                                new BasicNameValuePair("commisioningObjectCode", сommisioningObjectCode),
+                                new BasicNameValuePair("startReportDate", ISO_DATE.format(startReportDate)),
+                                new BasicNameValuePair("endReportDate", ISO_DATE.format(endReportDate))
+                        )
+                ))
+                .build();
+
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            StatusLine statusLine = response.getStatusLine();
+            HttpEntity entity = response.getEntity();
+            String rsBody = dumpBody(entity);
+
+            if (statusLine.getStatusCode() == 200) {
+                Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+                EscrowAccountOperationList root = (EscrowAccountOperationList) unmarshaller.unmarshal(new StringReader(rsBody));
+                return root.getEscrowAccountOperation();
+            } else {
+                String headers = dumpHeaders(response);
+                throw new RuntimeException(statusLine + "\n" + headers + rsBody);
+            }
+        }
+    }
+
+    /**
+     * Read http
+     * @param entity
+     * @return
+     */
+    private String dumpBody(HttpEntity entity) {
+        try {
+            return EntityUtils.toString(entity, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.err.println(e.toString());
+            return "";
+        }
+    }
+
+    private String dumpHeaders(CloseableHttpResponse response) {
+        return stream(response.getAllHeaders())
+                .map(h -> h.getName() + ": " + h.getValue())
+                .reduce((acc,val) -> acc = acc + val + "\n")
+                .orElse("");
     }
 
 
