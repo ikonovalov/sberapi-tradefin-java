@@ -53,7 +53,8 @@ public class EasyCmsExample {
         Store certs = new JcaCertStore(certList);
 
         CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
-        ContentSigner sha256RsaSigner = new JcaContentSignerBuilder("SHA256withRSA").build(key);
+        String alg = "SHA256withRSA"; // Должен соответствовать вашим ключам RSA, GOST и т.д.
+        ContentSigner sha256RsaSigner = new JcaContentSignerBuilder(alg).build(key);
 
         gen.addSignerInfoGenerator(
                 new JcaSignerInfoGeneratorBuilder(
