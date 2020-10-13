@@ -48,7 +48,7 @@ public class EasyCmsExample {
 
         // Формируем геренратор контейнера
         List<Certificate> certList = new ArrayList<>();
-        CMSTypedData msg = new CMSProcessableByteArray("Hello world!".getBytes());
+        CMSTypedData msg = new CMSProcessableByteArray("<tag>this is xml</tag>".getBytes());
         certList.add(certificate);
         Store certs = new JcaCertStore(certList);
 
