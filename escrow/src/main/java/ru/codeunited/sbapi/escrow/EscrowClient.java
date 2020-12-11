@@ -1,5 +1,6 @@
 package ru.codeunited.sbapi.escrow;
 
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
@@ -11,6 +12,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.codeunited.sberapi.*;
 import ru.sbrf.escrow.tfido.model.*;
 
@@ -33,6 +36,8 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 
 public class EscrowClient {
+
+    private final Logger log = LoggerFactory.getLogger(EscrowClient.class);
 
     private final JAXBContext jaxbContext;
 
@@ -73,6 +78,8 @@ public class EscrowClient {
 
     public ResidentialComplexDetails getResidentialComplexDetails() throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         HttpUriRequest request = RequestBuilder
                 .get(uri("residential-complex"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -81,6 +88,8 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
@@ -89,12 +98,16 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<ResidentialComplexDetails> rcElement =
                         (JAXBElement<ResidentialComplexDetails>) unmarshaller.unmarshal(new StringReader(rsBody));
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return rcElement.getValue();
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
             }
         }
+    }
+
+    private URI callString(HttpUriRequest request) {
+        return request.getURI();
     }
 
     public Optional<IndividualTerms> getIndividualTerms(UUID uuid) throws Exception {
@@ -104,6 +117,8 @@ public class EscrowClient {
 
     public Optional<IndividualTerms> getIndividualTerms(URI uri) throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         HttpUriRequest request = RequestBuilder
                 .get(uri)
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -112,6 +127,8 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
@@ -120,7 +137,7 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<IndividualTerms> rcElement =
                         (JAXBElement<IndividualTerms>) unmarshaller.unmarshal(new StringReader(rsBody));
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return Optional.of(rcElement.getValue());
             } else if (statusLine.getStatusCode() == 404) {
                 return Optional.empty();
@@ -132,7 +149,8 @@ public class EscrowClient {
 
     public UUID createIndividualTerms(String base64CEncodedCms) throws IOException {
         String tokenId = tokenClient.getTokenId(scopeName);
-
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         HttpUriRequest request = RequestBuilder
                 .post(uri("individual-terms"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -143,11 +161,13 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
             if (statusLine.getStatusCode() == 202) {
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return null;
             } else {
                 String headers = dumpHeaders(response);
@@ -178,6 +198,8 @@ public class EscrowClient {
                            String estateObjectConstructionNumber) throws Exception {
 
         String tokenId = tokenClient.getTokenId(scopeName);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
 
         HttpUriRequest request = RequestBuilder
                 .post(uri("individual-terms", "draft"))
@@ -210,11 +232,13 @@ public class EscrowClient {
                 ).build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
             if (statusLine.getStatusCode() == 200) {
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return rsBody;
             } else {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
@@ -224,6 +248,8 @@ public class EscrowClient {
 
     public Boolean cancel(UUID uuid) throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         HttpUriRequest request = RequestBuilder
                 .put(uri("individual-terms", uuid.toString(), "cancel"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -232,16 +258,18 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
 
             int statusCode = statusLine.getStatusCode();
             if (statusCode == 200) {
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return Boolean.TRUE;
             } else if (statusCode == 404 || statusCode == 406) {
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return Boolean.FALSE;
             } else {
                 String headers = dumpHeaders(response);
@@ -253,6 +281,8 @@ public class EscrowClient {
 
     public Optional<Status> status(UUID uuid) throws Exception {
         String tokenId = tokenClient.getTokenId(scopeName);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         HttpUriRequest request = RequestBuilder
                 .get(uri("individual-terms", uuid.toString(), "status"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -261,6 +291,8 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
@@ -269,7 +301,7 @@ public class EscrowClient {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 JAXBElement<Status> rcElement =
                         (JAXBElement<Status>) unmarshaller.unmarshal(new StringReader(rsBody));
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return Optional.of(rcElement.getValue());
             } else if (statusLine.getStatusCode() == 404) {
                 return Optional.empty(); // IT not found or canceled already
@@ -287,6 +319,10 @@ public class EscrowClient {
             LocalDate endReportDate ) throws Exception {
 
         String tokenId = tokenClient.getTokenId(scopeName);
+
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+
         HttpUriRequest request = RequestBuilder
                 .post(uri("account-list"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -305,6 +341,9 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
+
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
@@ -312,7 +351,7 @@ public class EscrowClient {
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 EscrowAccountList root = (EscrowAccountList) unmarshaller.unmarshal(new StringReader(rsBody));
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return root.getEscrowAccount();
             } else {
                 String headers = dumpHeaders(response);
@@ -329,6 +368,10 @@ public class EscrowClient {
             LocalDate endReportDate ) throws Exception {
 
         String tokenId = tokenClient.getTokenId(scopeName);
+
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+
         HttpUriRequest request = RequestBuilder
                 .post(uri("account-oper-list"))
                 .addHeader("Authorization", "Bearer " + tokenId)
@@ -347,6 +390,9 @@ public class EscrowClient {
                 .build();
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
+            stopWatch.stop();
+            log.info("{} -> {}", request.getURI(), stopWatch);
+
             StatusLine statusLine = response.getStatusLine();
             HttpEntity entity = response.getEntity();
             String rsBody = dumpBody(entity);
@@ -354,7 +400,7 @@ public class EscrowClient {
             if (statusLine.getStatusCode() == 200) {
                 Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
                 EscrowAccountOperationList root = (EscrowAccountOperationList) unmarshaller.unmarshal(new StringReader(rsBody));
-                this.quote = extractQuota(response);
+                this.quote = Quote.from(response);
                 return root.getEscrowAccountOperation();
             } else {
                 String headers = dumpHeaders(response);
@@ -382,16 +428,6 @@ public class EscrowClient {
                 .map(h -> h.getName() + ": " + h.getValue())
                 .reduce((acc,val) -> acc = acc + val + "\n")
                 .orElse("");
-    }
-
-    private Quote extractQuota(CloseableHttpResponse response) {
-        Header limit = response.getHeaders("X-RateLimit-Limit")[0];
-        Header remaining = response.getHeaders("X-RateLimit-Remaining")[0];
-        String[] splited = limit.getValue().replaceAll("name=", "").split(",");
-        String tariff = splited[0];
-        Integer limitNum = Integer.valueOf(limit.getValue().split(",")[1].replaceAll(";", ""));
-        Integer remainingNum = Integer.valueOf(remaining.getValue().split(",")[1].replaceAll(";", ""));
-        return new Quote(tariff, limitNum, remainingNum);
     }
 
 

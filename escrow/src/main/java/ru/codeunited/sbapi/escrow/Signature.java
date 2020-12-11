@@ -26,6 +26,7 @@ public class Signature {
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
     }
 
+    public static final String GOST_3411_WITHECGOST_3410_2012_256 = "GOST3411WITHECGOST3410-2012-256";
     public static final String GOST_3411_WITHECGOST_3410_2012_512 = "GOST3411WITHECGOST3410-2012-512";
     public static final String SHA256withRSA = "SHA256withRSA";
 
@@ -40,8 +41,8 @@ public class Signature {
     public Signature() throws NoSuchProviderException, KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
         KeyStore store = loadKeyStore();
         this.keyPwd = System.getProperty("keyPwd") != null ? System.getProperty("keyPwd").toCharArray() : null;
+        this.alg = System.getProperty("alg", GOST_3411_WITHECGOST_3410_2012_256);
         this.alias = System.getProperty("alias");
-        this.alg = System.getProperty("alg", SHA256withRSA);
         if (this.alias == null) { // используем первый попавшийся сертификат
             this.alias = store.aliases().nextElement();
         }

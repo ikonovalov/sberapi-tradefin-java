@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import ru.codeunited.sberapi.*;
 import ru.sbrf.escrow.tfido.model.*;
 
-import java.security.cert.X509Certificate;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -37,7 +36,6 @@ public class EscrowShowcase {
             );
 
             // Получение жилых комплексов и очередей ввода в эксплуатацию
-            log.info("residential-complex");
             ResidentialComplexDetails residentialComplexDetails = escrowClient.getResidentialComplexDetails();
             log.info("{}", escrowClient.getQuote());
 
@@ -73,10 +71,8 @@ public class EscrowShowcase {
             LocalDate start = LocalDate.now().minus(2, ChronoUnit.DAYS);
             LocalDate end = LocalDate.now().minus(1, ChronoUnit.DAYS);
             String objectCode = commissioningObjectDetails.getCode();
-            log.info("account-oper-list");
             List<EscrowAccountOperation> accountOperationList = escrowClient.getAccountOperationList(0, 1000, objectCode, start, end);
 
-            log.info("account-list");
             List<EscrowAccount> accountList = escrowClient.getAccountList(0, 1000, objectCode, start, end);
 
             log.info("Количество счетов с {} по {}: {}", start, end, accountList.size());
@@ -95,7 +91,7 @@ public class EscrowShowcase {
                     "ОВД Галактики Млечный путь",
                     "2000-02-03",
                     "+791600100203",
-                    "myemail@worldwide.com",
+                    "myemail-786@worldwide.com",
                     "0012345688",
                     certificateSerial,
                     "2019/АСБ-25",
@@ -107,18 +103,16 @@ public class EscrowShowcase {
             log.info("Черновик =>\n{}", individualTermsXML);
 
             // ПОДПИСАНИЕ И СОЗДАНИЕ ИУ
-
             Signature sig = new Signature();
             String encode = sig.signAndEncode(individualTermsXML.getBytes(), Signature.NO_OTHER);
 
-            UUID it202 = escrowClient.createIndividualTerms(encode);
+            //UUID it202 = escrowClient.createIndividualTerms(encode);
 
             final UUID uuid = UUID.fromString(
                     accountList.stream().findAny().orElseThrow(() -> new RuntimeException("Accounts not found")).getIndividualTermsId()
             );
 
             // ПОЛУЧЕНИЕ ИУ по ID
-
             Optional<IndividualTerms> individualTerms = escrowClient.getIndividualTerms(uuid);
             String getResult = individualTerms.map(it -> "found").orElse("not found");
             log.info("ИУ для {} {}", uuid, getResult);

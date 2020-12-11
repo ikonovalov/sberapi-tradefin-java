@@ -9,7 +9,10 @@ import java.nio.charset.StandardCharsets;
 
 public class SerialRunner {
 
-    public static final String INPUT = "780007a49dd830f27227720635cc367ab76be271";
+    public static final String INPUT = "AjYj1ABqrOCaTxP75FCM3UE=";
+
+    // 752529075908161484123308458873721773377
+    // 752529075908161484123308458873721773377
 
     public static void main(String[] args) {
         try {
@@ -40,9 +43,9 @@ public class SerialRunner {
     }
 
     private static BigInteger toBigInt(byte[] arr) {
-        byte[] rev = new byte[arr.length + 1];
-        for (int i = 0, j = arr.length; j > 0; i++, j--)
-            rev[j] = arr[i];
-        return new BigInteger(rev);
+//        byte[] rev = new byte[arr.length + 1];
+//        for (int i = 0, j = arr.length; j > 0; i++, j--)
+//            rev[j] = arr[i];
+        return new BigInteger(arr);
     }
 }

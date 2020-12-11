@@ -1,6 +1,7 @@
 package ru.codeunited.sberapi;
 
 import com.google.gson.Gson;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -10,6 +11,8 @@ import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,26 +30,9 @@ import static java.util.Arrays.asList;
 
 public class TokenClient extends PrimitiveClient {
 
-    private ConcurrentMap<String, String> tokens = new ConcurrentHashMap<>();
+    private final Logger log = LoggerFactory.getLogger(TokenClient.class);
 
-    public static void main(String[] args) throws CertificateException, UnrecoverableKeyException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, IOException {
-        ApacheHttpClientCustomSSLFactory httpClientFactory = new ApacheHttpClientCustomSSLFactory(new TlsFactorySystemPropsSource());
-        CloseableHttpClient httpClient = httpClientFactory.build();
-        CredentialsSource credentials = new CredentialsSystemPropsSource();
-
-        // Получение токена для эскроу
-        try (CloseableHttpResponse response =
-                     new TokenClient(httpClient, credentials).callToken("https://api.sberbank.ru/escrow")) {
-            System.out.println(response.getStatusLine());
-            for (Header h : response.getAllHeaders()) {
-                System.out.println(h.getName() + ": " + h.getValue());
-            }
-            HttpEntity entity = response.getEntity();
-            System.out.println("----------------------------------------");
-            String rs = EntityUtils.toString(entity);
-            System.out.println(rs);
-        }
-    }
+    private final ConcurrentMap<String, String> tokens = new ConcurrentHashMap<>();
 
     public TokenClient(CloseableHttpClient httpClient, CredentialsSource credentialsSource) {
         super(httpClient, credentialsSource);
@@ -65,7 +51,12 @@ public class TokenClient extends PrimitiveClient {
                         ))
                 ).build();
 
-        return httpClient.execute(request);
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        CloseableHttpResponse execute = httpClient.execute(request);
+        stopWatch.stop();
+        log.info("{} -> {}", request.getURI(), stopWatch);
+        return execute;
     }
 
     public final String getNewTokenID(String scope) {
