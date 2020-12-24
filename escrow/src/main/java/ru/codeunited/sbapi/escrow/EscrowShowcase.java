@@ -48,7 +48,9 @@ public class EscrowShowcase {
             log.info("ЖК: " + rc.getResidentialComplexInfo().getName());
 
             // Выбор очереди (берем первый попавшийся)
-            Optional<CommissioningObjectDetails> commissioningObjectOpt = rc.getCommissioningObject().stream().findFirst();
+            List<CommissioningObjectDetails> commissioningObjects = rc.getCommissioningObject();
+            log.info("Количество очередей ввода: " + commissioningObjects.size());
+            Optional<CommissioningObjectDetails> commissioningObjectOpt = commissioningObjects.stream().findFirst();
             if (!commissioningObjectOpt.isPresent()) {
                 throw new RuntimeException("У ЖК '" + rc.getResidentialComplexInfo().getName() + "' отсутствуют очереди ввода");
             }
@@ -71,10 +73,11 @@ public class EscrowShowcase {
             LocalDate start = LocalDate.now().minus(2, ChronoUnit.DAYS);
             LocalDate end = LocalDate.now().minus(1, ChronoUnit.DAYS);
             String objectCode = commissioningObjectDetails.getCode();
+
             List<EscrowAccountOperation> accountOperationList = escrowClient.getAccountOperationList(0, 1000, objectCode, start, end);
+            log.info("Количество операций с {} по {}: {}", start, end, accountOperationList.size());
 
             List<EscrowAccount> accountList = escrowClient.getAccountList(0, 1000, objectCode, start, end);
-
             log.info("Количество счетов с {} по {}: {}", start, end, accountList.size());
 
             // Формирование запроса для черновика
@@ -131,7 +134,10 @@ public class EscrowShowcase {
             });
 
             // Отмена ИУ по ID
-            escrowClient.cancel(UUID.randomUUID());
+            UUID uuidCancelation = UUID.randomUUID();
+            log.info("Отмена {}", uuidCancelation);
+            Boolean cancel = escrowClient.cancel(uuidCancelation);
+            log.info(cancel?"\tУСПЕШНО":"\tНЕ ПОЛУЧИЛОСЬ");
         } catch (Exception e) {
             log.error("\n{}", e.getMessage());
         }

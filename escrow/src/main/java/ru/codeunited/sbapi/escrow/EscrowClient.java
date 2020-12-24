@@ -270,6 +270,9 @@ public class EscrowClient {
                 return Boolean.TRUE;
             } else if (statusCode == 404 || statusCode == 406) {
                 this.quote = Quote.from(response);
+                String headers = dumpHeaders(response);
+                log.error(statusLine.toString());
+                log.error(headers);
                 return Boolean.FALSE;
             } else {
                 String headers = dumpHeaders(response);
