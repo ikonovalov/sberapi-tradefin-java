@@ -17,6 +17,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.Optional;
+import java.util.UUID;
 
 public class Tools {
     public static void main(String[] args) throws ParseException, URISyntaxException, IOException, CMSException, SAXException {
@@ -33,8 +35,20 @@ public class Tools {
                 .argName("path").longOpt("file")
                 .build();
 
-        options.addOption(modeOpt);
-        options.addOption(fileOpt);
+        Option idOpt = Option.builder().desc("Id 1234566")
+                .hasArg().numberOfArgs(1)
+                .argName("id").longOpt("id")
+                .build();
+
+        Option uuidOpt = Option.builder().desc("UUID")
+                .hasArg().numberOfArgs(1)
+                .argName("uuid").longOpt("uuid")
+                .build();
+
+        options.addOption(modeOpt)
+                .addOption(fileOpt)
+                .addOption(idOpt)
+                .addOption(uuidOpt);
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -73,7 +87,19 @@ public class Tools {
                     info("XML:\n" + xml);
                     break;
                 case "uuid":
-                    info("uuid");
+                    System.out.println("UUID mode enabled");
+                    Optional.ofNullable(cmd.getOptionValue(idOpt.getLongOpt())).ifPresent(
+                            strId -> System.out.println("ID=" + strId + " => UUID=" +
+                                    new UUID(Long.parseLong(strId), Long.parseLong(strId))
+                            )
+                    );
+
+                    Optional.ofNullable(cmd.getOptionValue(uuidOpt.getLongOpt())).ifPresent(
+                            strUuid -> System.out.println("UUID=" + strUuid + " => ID=" +
+                                    UUID.fromString(strUuid).getLeastSignificantBits()
+                            )
+                    );
+                    break;
                 default:
                     error("Unknown mode");
             }
