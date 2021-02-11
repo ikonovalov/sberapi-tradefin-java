@@ -75,6 +75,11 @@
                 <artifactId>commons-cli</artifactId>
                 <version>${commons-cli.version}</version>
             </dependency>
+            <dependency>
+                <groupId>common-cli</groupId>
+                <artifactId>common-cli</artifactId>
+                <version>1.4</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

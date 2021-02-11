@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
@@ -67,13 +68,14 @@ public class Tools {
                         System.exit(0);
                     }
                     byte[] fileContent = Files.readAllBytes(Paths.get(path));
+                    fileContent = new String(fileContent).replaceAll("\n", "").getBytes(StandardCharsets.UTF_8);
                     ok("File access");
 
                     byte[] decoded = null;
                     try {
                         decoded = Base64.getDecoder().decode(fileContent);
                     } catch (Exception e) {
-                        fail("Base64");
+                        fail("Base64" + e.getMessage());
                     }
                     ok("Base64 encoding");
 
