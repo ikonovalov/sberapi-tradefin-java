@@ -25,9 +25,9 @@ public class Tools {
         // create Options object
         Options options = new Options();
 
-        // add t option
+        /* CMS mode options */
         Option modeOpt = Option.builder().desc("Work mode")
-                .argName("cms,uuid").longOpt("mode").hasArg(true).optionalArg(false)
+                .argName("cms,uuid,crt").longOpt("mode").hasArg(true).optionalArg(false)
                 .build();
 
         Option fileOpt = Option.builder().desc("Path to file")
@@ -35,6 +35,7 @@ public class Tools {
                 .argName("path").longOpt("file")
                 .build();
 
+        /* UUID mode options */
         Option idOpt = Option.builder().desc("Id 1234566")
                 .hasArg().numberOfArgs(1)
                 .argName("id").longOpt("id")
@@ -45,10 +46,18 @@ public class Tools {
                 .argName("uuid").longOpt("uuid")
                 .build();
 
-        options.addOption(modeOpt)
+        /* CRT mode options */
+        Option serialOpt = Option.builder().desc("Serial number")
+                .hasArg().numberOfArgs(1)
+                .argName("serial_number").longOpt("serial")
+                .build();
+
+        options /* All available options */
+                .addOption(modeOpt)
                 .addOption(fileOpt)
                 .addOption(idOpt)
-                .addOption(uuidOpt);
+                .addOption(uuidOpt)
+                .addOption(serialOpt);
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd = parser.parse(options, args);
@@ -72,13 +81,18 @@ public class Tools {
                     byte[] decoded = null;
                     try {
                         decoded = Base64.getDecoder().decode(fileContent);
+                        ok("Base64 encoding");
                     } catch (Exception e) {
                         fail("Base64");
                     }
-                    ok("Base64 encoding");
 
-                    String xml = Pkcs7Extractor.readContent(decoded);
-                    ok("CMS content");
+                    String xml = "";
+                    try {
+                        xml = Pkcs7Extractor.readContent(decoded);
+                        ok("CMS content");
+                    } catch (Exception e) {
+                        fail("CMS invalid: " + e.getMessage());
+                    }
 
                     if (validateXML(xml)) {
                         ok("XML validation");
@@ -151,5 +165,6 @@ public class Tools {
 
     private static void fail(String msg) {
         System.err.println("[FAIL]\t" + msg);
+        System.exit(1);
     }
 }
