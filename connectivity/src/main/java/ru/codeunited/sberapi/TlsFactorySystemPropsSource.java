@@ -31,10 +31,9 @@ public class TlsFactorySystemPropsSource implements TlsFactory {
 
     @Override
     public SSLContext build() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, UnrecoverableKeyException, KeyManagementException {
-        SSLContext sslcontext = SSLContexts.custom()
+        return SSLContexts.custom()
                 .loadTrustMaterial(trustStore, truststorePwd.toCharArray(), new TrustAllStrategy())
                 .loadKeyMaterial(keyStore, keystorePwd.toCharArray(), keyPwd.toCharArray())
                 .build();
-        return sslcontext;
     }
 }

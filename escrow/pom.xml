@@ -50,14 +50,42 @@
                 <version>2.5.0</version>
                 <executions>
                     <execution>
-                        <id>xjc</id>
+                        <id>escrow-schema-v1</id>
                         <goals>
                             <goal>xjc</goal>
                         </goals>
                         <configuration>
+                            <packageName>ru.sbrf.escrow.tfido.model.v1</packageName>
                             <sources>
-                                <source>${project.basedir}/src/main/resources</source>
+                                <source>${project.basedir}/src/main/resources/escrow-v1.xsd</source>
                             </sources>
+                            <clearOutputDir>false</clearOutputDir>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>escrow-schema-v2</id>
+                        <goals>
+                            <goal>xjc</goal>
+                        </goals>
+                        <configuration>
+                            <packageName>ru.sbrf.escrow.tfido.model.v2</packageName>
+                            <sources>
+                                <source>${project.basedir}/src/main/resources/escrow-v2.xsd</source>
+                            </sources>
+                            <clearOutputDir>false</clearOutputDir>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>escrow-schema-v3</id>
+                        <goals>
+                            <goal>xjc</goal>
+                        </goals>
+                        <configuration>
+                            <packageName>ru.sbrf.escrow.tfido.model.v3</packageName>
+                            <sources>
+                                <source>${project.basedir}/src/main/resources/escrow-v3.xsd</source>
+                            </sources>
+                            <clearOutputDir>false</clearOutputDir>
                         </configuration>
                     </execution>
                 </executions>

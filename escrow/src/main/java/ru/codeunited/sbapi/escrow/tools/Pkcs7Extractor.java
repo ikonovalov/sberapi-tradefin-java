@@ -8,13 +8,13 @@ import org.bouncycastle.util.encoders.Base64;
 
 import java.io.ByteArrayInputStream;
 import java.io.PrintStream;
+import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Pkcs7Extractor {
 
-    public static String readContent(byte[] signedData) throws CMSException {
+    public static String readContent(byte[] signedData, Charset charset) throws CMSException {
         CMSSignedData cmsSignedData = signedDataFrom(signedData);
         dumpSignatureRelatedInfo(cmsSignedData, System.out);
         CMSTypedData signedContent = cmsSignedData.getSignedContent();
@@ -22,7 +22,7 @@ public class Pkcs7Extractor {
             throw new IllegalArgumentException("SignedContend is null. Detached signature? Weight is only " + signedData.length + " bytes");
         }
         byte[] byteContent = (byte[]) signedContent.getContent();
-        return new String(byteContent, UTF_8);
+        return new String(byteContent, charset);
     }
 
     public static CMSSignedData signedDataFrom(byte[] signedData) throws CMSException {
@@ -35,6 +35,7 @@ public class Pkcs7Extractor {
 
         SignerInformationStore signerInfos = signedData.getSignerInfos();
         out.println("CMS signers (" + signerInfos.size() + "):");
+
         // Print and iterate SignerInfos
         signerInfos.forEach(si -> {
             SignerId sid = si.getSID();
@@ -53,15 +54,16 @@ public class Pkcs7Extractor {
         // Print certificates
         Collection<X509CertificateHolder> certs = signedData.getCertificates().getMatches(new WhateverSelector<>());
         out.println("CMS certificates (" + certs.size() + "):");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         certs.forEach(x509 -> {
             out.println("\tsubject: " + x509.getSubject());
             out.println("\tissuer : " + x509.getIssuer());
             out.println("\tserial : " + x509.getSerialNumber().toString(16));
-            out.println("\tvalid  : " + x509.getNotBefore() + " - " + x509.getNotAfter());
-
+            out.println("\tvalid  : " + sdf.format(x509.getNotBefore()) + " - " + sdf.format(x509.getNotAfter()));
             out.println();
         });
 
+        // Print CRLs
         Collection<X509CRLHolder> crls = signedData.getCRLs().getMatches(new WhateverSelector<>());
         out.println("CMS CRLs (" + crls.size() + ")");
         out.println();

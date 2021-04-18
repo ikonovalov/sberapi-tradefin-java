@@ -32,11 +32,11 @@ public class Signature {
 
     public static final X509Certificate[] NO_OTHER = new X509Certificate[]{};
 
-    private PrivateKey privateKey;
-    private X509Certificate certificate;
-    private String alg;
+    private final PrivateKey privateKey;
+    private final X509Certificate certificate;
+    private final String alg;
     private String alias;
-    private char[] keyPwd;
+    private final char[] keyPwd;
 
     public Signature() throws NoSuchProviderException, KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
         KeyStore store = loadKeyStore();

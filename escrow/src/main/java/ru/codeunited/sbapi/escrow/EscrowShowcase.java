@@ -4,7 +4,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.codeunited.sberapi.*;
-import ru.sbrf.escrow.tfido.model.*;
+import ru.sbrf.escrow.tfido.model.v2.*;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

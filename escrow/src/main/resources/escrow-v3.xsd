@@ -34,6 +34,28 @@
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
+	<xs:complexType name="ResidentialComplexDetailsSBBOL">
+		<xs:annotation>
+			<xs:documentation>Жилой комплекс застройщика с очередями и уполномоченными представителями + краткая инфа о застройщике</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="residentialComplex" type="ResidentialComplex" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Список ЖК</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="authorizedRepresentative" type="AuthorizedRepresentativeDetails" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Список уполномоченных представителей застройщика</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="beneficiary" type="BeneficiaryBrief" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Сведения о застройщике</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
 	<xs:complexType name="ResidentialComplexInfo">
 		<xs:annotation>
 			<xs:documentation>Информация о жилом комплексе</xs:documentation>
@@ -71,11 +93,18 @@
 					<xs:documentation>Депонируемая сумма</xs:documentation>
 				</xs:annotation>
 			</xs:element>
-			<xs:element name="depositor" type="Depositor">
-				<xs:annotation>
-					<xs:documentation>Данные о депоненте</xs:documentation>
-				</xs:annotation>
-			</xs:element>
+			<xs:choice>
+				<xs:element name="depositor" type="IndividualParty">
+					<xs:annotation>
+						<xs:documentation>Депонент ФЛ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="depositorLegal" type="LegalParty">
+					<xs:annotation>
+						<xs:documentation>Депонент ЮЛ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
 			<xs:element name="beneficiary" type="Beneficiary">
 				<xs:annotation>
 					<xs:documentation>Данные о бенефициаре</xs:documentation>
@@ -125,11 +154,14 @@
 				</xs:annotation>
 				<xs:simpleType>
 					<xs:restriction base="xs:string">
-						<xs:enumeration value="SBBOL"/>
-						<xs:enumeration value="SBER_API"/>
-						<xs:enumeration value="PAPER"/>
+						<xs:maxLength value="100"/>
 					</xs:restriction>
 				</xs:simpleType>
+			</xs:element>
+			<xs:element name="isMobileSignEnabled" type="xs:boolean" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Признак возможности подписания депонентом через СБОЛ</xs:documentation>
+				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
@@ -147,6 +179,26 @@
 						<xs:simpleType>
 							<xs:restriction base="xs:string">
 								<xs:maxLength value="10000"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="storageId" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Ссылка/ИД хранения документа</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:maxLength value="1000"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+					<xs:element name="depositorSbbolId" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>СББОЛ id депонента</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:maxLength value="100"/>
 							</xs:restriction>
 						</xs:simpleType>
 					</xs:element>
@@ -169,11 +221,23 @@
 					<xs:documentation>Депонируемая сумма</xs:documentation>
 				</xs:annotation>
 			</xs:element>
-			<xs:element name="depositorName" type="DepositorFIO">
-				<xs:annotation>
-					<xs:documentation>Данные о депоненте</xs:documentation>
-				</xs:annotation>
-			</xs:element>
+			<xs:choice>
+				<xs:element name="depositorName" type="IndividualFullName">
+					<xs:annotation>
+						<xs:documentation>Депонент ФЛ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="depositorLegal">
+					<xs:annotation>
+						<xs:documentation>Депонент ЮЛ</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:maxLength value="200"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+			</xs:choice>
 			<xs:element name="equityParticipationAgreement" type="EquityParticipationAgreement">
 				<xs:annotation>
 					<xs:documentation>Данные о ДДУ</xs:documentation>
@@ -193,6 +257,21 @@
 				<xs:annotation>
 					<xs:documentation>Номер (референс) ИУ</xs:documentation>
 				</xs:annotation>
+			</xs:element>
+			<xs:element name="isMobileSignEnabled" type="xs:boolean" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Признак возможности подписания депонентом в СБОЛ</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="signChannel">
+				<xs:annotation>
+					<xs:documentation>Канал подписания ИУ бенефициаром</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="100"/>
+					</xs:restriction>
+				</xs:simpleType>
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
@@ -216,10 +295,15 @@
 					</xs:restriction>
 				</xs:simpleType>
 			</xs:element>
-			<xs:element name="expireDate" type="xs:date">
+			<xs:element name="expireDate">
 				<xs:annotation>
 					<xs:documentation>Срок депонирования</xs:documentation>
 				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="500"/>
+					</xs:restriction>
+				</xs:simpleType>
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
@@ -326,13 +410,7 @@
 				</xs:annotation>
 				<xs:simpleType>
 					<xs:restriction base="xs:string">
-						<xs:enumeration value="SIGNED_BY_BEN"/>
-						<xs:enumeration value="SIGNED_BY_DEP"/>
-						<xs:enumeration value="REJECTED_BY_DEP"/>
-						<xs:enumeration value="REJECTED_BY_BANK"/>
-						<xs:enumeration value="SENT_TO_DEP"/>
-						<xs:enumeration value="ACCOUNT_OPENED"/>
-						<xs:enumeration value="REJECTED_BY_BEN"/>
+						<xs:maxLength value="50"/>
 					</xs:restriction>
 				</xs:simpleType>
 			</xs:element>
@@ -343,9 +421,47 @@
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
+	<xs:complexType name="EscrowConditions">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий статус обработки ИУ</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="contitions" type="Description">
+				<xs:annotation>
+					<xs:documentation>Дисклеймер</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="expireDate">
+				<xs:annotation>
+					<xs:documentation>Срок депонирования</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="500"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
 	<xs:complexType name="Beneficiary">
 		<xs:annotation>
 			<xs:documentation>Тип, описывающий данные о застройщике (бенефициаре)</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="LegalParty">
+				<xs:sequence>
+					<xs:element name="authorizedRepresentative" type="AuthorizedRepresentative">
+						<xs:annotation>
+							<xs:documentation>Уполномоченный представитель</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="LegalParty">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий данные о юридическом лице</xs:documentation>
 		</xs:annotation>
 		<xs:sequence>
 			<xs:element name="legalName" type="LegalName">
@@ -368,48 +484,65 @@
 					<xs:documentation>Юридический адрес для корреспонденции</xs:documentation>
 				</xs:annotation>
 			</xs:element>
-			<xs:element name="authorizedRepresentative" type="AuthorizedRepresentative">
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="BeneficiaryBrief">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий краткие данные о застройщике (бенефициаре)</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="legalName" type="LegalName">
 				<xs:annotation>
-					<xs:documentation>Уполномоченный представитель</xs:documentation>
+					<xs:documentation>Название организации</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="location" type="Address">
+				<xs:annotation>
+					<xs:documentation>Место нахождения: страна + населенный пункт</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="legalAddress" type="Address">
+				<xs:annotation>
+					<xs:documentation>Юридический адрес для корреспонденции</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
-	<xs:complexType name="DepositorFIO">
+	<xs:complexType name="IndividualFullName">
 		<xs:annotation>
-			<xs:documentation>Тип, описывающий данные о ФИО депонента</xs:documentation>
+			<xs:documentation>Тип, описывающий данные о ФИО физ лица</xs:documentation>
 		</xs:annotation>
 		<xs:sequence>
 			<xs:element name="lastName" type="PersonName">
 				<xs:annotation>
-					<xs:documentation>Фамилия депонента</xs:documentation>
+					<xs:documentation>Фамилия</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="firstName" type="PersonName">
 				<xs:annotation>
-					<xs:documentation>Имя депонента</xs:documentation>
+					<xs:documentation>Имя</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="middleName" type="PersonName" minOccurs="0">
 				<xs:annotation>
-					<xs:documentation>Отчество депонента</xs:documentation>
+					<xs:documentation>Отчество</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
 	</xs:complexType>
-	<xs:complexType name="Depositor">
+	<xs:complexType name="IndividualParty">
 		<xs:annotation>
-			<xs:documentation>Тип, описывающий данные о депоненте</xs:documentation>
+			<xs:documentation>Тип, описывающий данные о физическом лице</xs:documentation>
 		</xs:annotation>
 		<xs:sequence>
-			<xs:element name="name" type="DepositorFIO">
+			<xs:element name="name" type="IndividualFullName">
 				<xs:annotation>
-					<xs:documentation>ФИО депонента</xs:documentation>
+					<xs:documentation>ФИО </xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="identificationDocument" type="IdentificationDocument">
 				<xs:annotation>
-					<xs:documentation>Данные ДУЛ депонента</xs:documentation>
+					<xs:documentation>Данные ДУЛ</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="registrationAddress" type="Address">
@@ -424,7 +557,7 @@
 			</xs:element>
 			<xs:element name="contacts">
 				<xs:annotation>
-					<xs:documentation>Контакты депонента</xs:documentation>
+					<xs:documentation>Контакты</xs:documentation>
 				</xs:annotation>
 				<xs:complexType>
 					<xs:sequence>
@@ -477,10 +610,15 @@
 								<xs:documentation>Объект ввода в экплуатацию, к которому отностися обънкт недвижимости</xs:documentation>
 							</xs:annotation>
 						</xs:element>
-						<xs:element name="type" type="EstateObjectType">
+						<xs:element name="type">
 							<xs:annotation>
-								<xs:documentation>Тип объекта (квартира, чердак, подвал и тд)</xs:documentation>
+								<xs:documentation>Тип объекта</xs:documentation>
 							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="50"/>
+								</xs:restriction>
+							</xs:simpleType>
 						</xs:element>
 						<xs:element name="constructionNumber" minOccurs="0">
 							<xs:annotation>
@@ -778,6 +916,11 @@
 				</xs:annotation>
 			</xs:element>
 			<xs:element ref="individualTerms"/>
+			<xs:element name="beneficiaryCertificate" type="Certificate" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Сертификат, которым представитель бенефициара подписал ИУ</xs:documentation>
+				</xs:annotation>
+			</xs:element>
 			<xs:element ref="status"/>
 			<xs:element name="refundAccount" type="AccountNumber" minOccurs="0">
 				<xs:annotation>
@@ -789,6 +932,53 @@
 					<xs:documentation>Банк счета возврата</xs:documentation>
 				</xs:annotation>
 			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="IndividualTermsDecision">
+		<xs:annotation>
+			<xs:documentation>Тип, содержащий результат подписания ИУ депонентом ЮЛ</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Id" type="UUID">
+				<xs:annotation>
+					<xs:documentation>Идентификатор ИУ в ФП Эскроу</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice>
+				<xs:element name="accept" type="AcceptDecision">
+					<xs:annotation>
+						<xs:documentation>Согласие с ИУ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="rejectReason">
+					<xs:annotation>
+						<xs:documentation>Причина отказа</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:maxLength value="1000"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+			</xs:choice>
+			<xs:choice>
+				<xs:element name="clientSignature" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>ПЭП клиента</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:maxLength value="10000"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="clientCertificate" type="Certificate" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Сертификат, которым представитель депонента подписал ИУ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+			<xs:element name="metaInfo" type="MetaInfo" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="AcceptDecision">
@@ -814,6 +1004,33 @@
 			<xs:element name="clientBranch" type="xs:long" minOccurs="0">
 				<xs:annotation>
 					<xs:documentation>Филлиал клиента, испрользуесмый для открытия счета. Соответствует полю Filial в сервисе УСВ БО</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="contacts" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Контакты</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="phone" type="Phone">
+							<xs:annotation>
+								<xs:documentation>Номер телефона</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="email" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Адрес электронной почты</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="Email"/>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="authorizedRepresentative" type="AuthorizedRepresentative" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Уполномоченный представитель</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
@@ -898,6 +1115,257 @@
 			<xs:element name="dateOfBirth" type="xs:date">
 				<xs:annotation>
 					<xs:documentation>Дата рождения</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Certificate">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий сертификат которым были подписаны ИУ</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="serialNumber">
+				<xs:annotation>
+					<xs:documentation>Серийный номер	</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="2000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="publisher">
+				<xs:annotation>
+					<xs:documentation>Издатель</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="2000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="subject">
+				<xs:annotation>
+					<xs:documentation>Субъект</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="1000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="dateFrom" type="xs:date">
+				<xs:annotation>
+					<xs:documentation> Дата начала	</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="dateTill" type="xs:date">
+				<xs:annotation>
+					<xs:documentation> Дата окончания	</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MetaInfo">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий метаданные</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="storageId" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ссылка/ИД хранения документа</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="1000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="epkId" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>ЕПК id</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="100"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="eksEpkId" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>ЕПК id в ЕКС</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="100"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="digitalId" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>digital id</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="100"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="EscrowSearchFilter">
+		<xs:annotation>
+			<xs:documentation>Критерии поиска ИУ</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="sortParameter">
+				<xs:annotation>
+					<xs:documentation>Параметры сортировки</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="name">
+							<xs:annotation>
+								<xs:documentation>Поле, по которому будет сортировка</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="docNumber"/>
+									<xs:enumeration value="saleContractReference"/>
+									<xs:enumeration value="amount"/>
+									<xs:enumeration value="lastModifiedDate"/>
+									<xs:enumeration value="residentialComplexName"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="order">
+							<xs:annotation>
+								<xs:documentation>Порядок сортировки</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="DESC"/>
+									<xs:enumeration value="ASC"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="limit">
+				<xs:annotation>
+					<xs:documentation>Параметры пагинации</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="offset" type="xs:long">
+							<xs:annotation>
+								<xs:documentation>Смещение (нумерация начинается с 1)</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="count" type="xs:long">
+							<xs:annotation>
+								<xs:documentation>Количество записей</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="equityParticipationAgreementNumber" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Номер ДДУ (по LIKE%)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="50"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="depositor" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>ФИО депонента (по LIKE%)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="152"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="residentialComplex" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Название ЖК (по EQ)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="1000"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="amountFrom" type="xs:decimal" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Сумма эскроу (по GE)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="amountTo" type="xs:decimal" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Сумма эскроу (по LE)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="commissioningObjectTitle" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Наименование очереди (по EQ)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="250"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="authorizedRepresentative" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>ФИО доверенного лица (по LIKE%)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="152"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="status" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Статус ИУ (по E)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="50"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="lastModifiedDateFrom" type="xs:dateTime" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Дата последнего изменения C</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="lastModifiedDateTo" type="xs:dateTime" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Дата последнего изменения ПО</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ErrorRfc7807">
+		<xs:annotation>
+			<xs:documentation>Тип, описывающий ошибку</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="status" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Код ошибки</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="title" type="Description" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Описание ошибки</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
@@ -1037,33 +1505,6 @@
 			<xs:pattern value="\d{9}"/>
 		</xs:restriction>
 	</xs:simpleType>
-	<xs:simpleType name="EstateObjectType">
-		<xs:annotation>
-			<xs:documentation>Тип, описывающий типы объектов недвижимости</xs:documentation>
-		</xs:annotation>
-		<xs:restriction base="xs:string">
-			<xs:enumeration value="RESIDENTIAL">
-				<xs:annotation>
-					<xs:documentation>Жилая недвижимость</xs:documentation>
-				</xs:annotation>
-			</xs:enumeration>
-			<xs:enumeration value="NON_RESIDENTIAL">
-				<xs:annotation>
-					<xs:documentation>Нежилая недвижимость</xs:documentation>
-				</xs:annotation>
-			</xs:enumeration>
-			<xs:enumeration value="PARKING_SLOT">
-				<xs:annotation>
-					<xs:documentation>Машиноместо</xs:documentation>
-				</xs:annotation>
-			</xs:enumeration>
-			<xs:enumeration value="OTHER">
-				<xs:annotation>
-					<xs:documentation>Иное</xs:documentation>
-				</xs:annotation>
-			</xs:enumeration>
-		</xs:restriction>
-	</xs:simpleType>
 	<xs:simpleType name="UUID">
 		<xs:annotation>
 			<xs:documentation>Тип, описывающий UUID</xs:documentation>
@@ -1107,19 +1548,14 @@
 			<xs:documentation>Список жилых комлексов застройщика</xs:documentation>
 		</xs:annotation>
 	</xs:element>
+	<xs:element name="individualTermsSBBOL" type="IndividualTermsSBBOL">
+		<xs:annotation>
+			<xs:documentation>Индивидуальные условия СББОЛ (ИУ)</xs:documentation>
+		</xs:annotation>
+	</xs:element>
 	<xs:element name="individualTerms" type="IndividualTerms">
 		<xs:annotation>
 			<xs:documentation>Индивидуальные условия (ИУ)</xs:documentation>
-		</xs:annotation>
-	</xs:element>
-	<xs:element name="individualTermsSBBOL" type="IndividualTermsSBBOL">
-		<xs:annotation>
-			<xs:documentation>Индивидуальные условия (ИУ), поступающие через СББОЛ</xs:documentation>
-		</xs:annotation>
-	</xs:element>
-	<xs:element name="individualTermsDetails" type="IndividualTermsDetails">
-		<xs:annotation>
-			<xs:documentation>Детали документа с индивидуальными условиями (ИУ)</xs:documentation>
 		</xs:annotation>
 	</xs:element>
 	<xs:element name="status" type="Status">
@@ -1146,5 +1582,91 @@
 				<xs:element name="escrowAccountOperation" type="EscrowAccountOperation" minOccurs="0" maxOccurs="unbounded"/>
 			</xs:sequence>
 		</xs:complexType>
+	</xs:element>
+	<xs:element name="residentialComplexSbbol" type="ResidentialComplexDetailsSBBOL">
+		<xs:annotation>
+			<xs:documentation>Список жилых комлексов застройщика для СББОЛ</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="CMSdata" type="xs:base64Binary">
+		<xs:annotation>
+			<xs:documentation>Запрос на сохранение индивидуальных условий (ИУ)</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="resultSbbol">
+		<xs:annotation>
+			<xs:documentation>Ответ сервиса сохранения ИУ в СББОЛ</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="documentId" type="UUID">
+					<xs:annotation>
+						<xs:documentation>Идентификатор созданного документа</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="reference" type="Reference">
+					<xs:annotation>
+						<xs:documentation>Номер (референс) ИУ</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="individualTermsDetails" type="IndividualTermsDetails">
+		<xs:annotation>
+			<xs:documentation>Детали документа с индивидуальными условиями (ИУ) СББОЛ</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="individualTermsSearchFilter" type="EscrowSearchFilter">
+		<xs:annotation>
+			<xs:documentation>Фильтр на запрос реестра ИУ СББОЛ</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="individualTermsList">
+		<xs:annotation>
+			<xs:documentation>Реестр ИУ СББОЛ</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="individualTerms" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Список ИУ</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:complexContent>
+							<xs:extension base="IndividualTermsBrief">
+								<xs:sequence>
+									<xs:element name="taxId" type="TaxId">
+										<xs:annotation>
+											<xs:documentation>ИНН клиента</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="sbbolId" type="UUID">
+										<xs:annotation>
+											<xs:documentation>СББОЛ ИД клиента</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:extension>
+						</xs:complexContent>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="disclaimer" type="EscrowConditions">
+		<xs:annotation>
+			<xs:documentation>Дисклеймер СББОЛ</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="escrowPrintForm" type="xs:base64Binary">
+		<xs:annotation>
+			<xs:documentation>Контейнер с печатной формой СББОЛ</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="error" type="ErrorRfc7807">
+		<xs:annotation>
+			<xs:documentation>Ошибка сервиса</xs:documentation>
+		</xs:annotation>
 	</xs:element>
 </xs:schema>

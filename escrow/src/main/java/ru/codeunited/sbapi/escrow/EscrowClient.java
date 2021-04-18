@@ -15,7 +15,7 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.codeunited.sberapi.*;
-import ru.sbrf.escrow.tfido.model.*;
+import ru.sbrf.escrow.tfido.model.v2.*;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
@@ -49,8 +49,6 @@ public class EscrowClient {
 
     private final String scopeName = "https://api.sberbank.ru/escrow";
 
-    private final String baseURI = "https://api.sberbank.ru/ru/prod/v2/escrow";
-
     private final RqUID rqUID = new RqUID();
 
     private Quote quote = new Quote("UNKNOWN", MIN_VALUE, MIN_VALUE);
@@ -59,7 +57,7 @@ public class EscrowClient {
         this.httpClient = httpClient;
         this.credentials = credentials;
         this.tokenClient = tokenClient;
-        this.jaxbContext = JAXBContext.newInstance("ru.sbrf.escrow.tfido.model");
+        this.jaxbContext = JAXBContext.newInstance("ru.sbrf.escrow.tfido.model.v2");
     }
 
     public Quote getQuote() {
@@ -67,6 +65,7 @@ public class EscrowClient {
     }
 
     public String baseURI() {
+        String baseURI = "https://api.sberbank.ru/ru/prod/v2/escrow";
         return baseURI;
     }
 
@@ -104,10 +103,6 @@ public class EscrowClient {
                 throw new RuntimeException(statusLine + "\n" + rsBody);
             }
         }
-    }
-
-    private URI callString(HttpUriRequest request) {
-        return request.getURI();
     }
 
     public Optional<IndividualTerms> getIndividualTerms(UUID uuid) throws Exception {

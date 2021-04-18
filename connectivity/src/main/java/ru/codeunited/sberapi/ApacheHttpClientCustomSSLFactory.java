@@ -35,10 +35,9 @@ public class ApacheHttpClientCustomSSLFactory implements ApacheHttpClientFactory
                 this.tlsFactory.supportedCipherSuites(),
                 this.hostnameVerifier);
 
-        CloseableHttpClient httpclient = HttpClients
+        return HttpClients
                 .custom()
                 .setSSLSocketFactory(sslsf)
                 .build();
-        return httpclient;
     }
 }
